@@ -1,13 +1,10 @@
 const express = require("express");
 const router = express.Router();
 
+// ✅ correct relative paths
 const credits = require("./credits");
-const deductions = require("./deductions");
+const deductions = require("../deductions");
 
-/**
- * POST /ask
- * Body: { question: string }
- */
 router.post("/ask", (req, res) => {
   const { question } = req.body;
 
@@ -22,18 +19,16 @@ router.post("/ask", (req, res) => {
 
   if (q.includes("credit")) {
     insights = credits;
-  } else if (q.includes("deduction")) {
+  } 
+  else if (q.includes("deduction")) {
     insights = deductions;
-  } else if (q.includes("save tax") || q.includes("reduce tax")) {
+  } 
+  else if (q.includes("save tax") || q.includes("reduce tax")) {
+    insights = [...deductions, ...credits];
+  } 
+  else {
     insights = [
-      ...deductions,
-      ...credits
-    ];
-  } else {
-    insights = [
-      {
-        note: "General IRS tax planning logic will be applied here"
-      }
+      { note: "IRS logic engine v1: No exact match, generic guidance returned." }
     ];
   }
 
