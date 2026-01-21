@@ -1,17 +1,12 @@
 const express = require("express");
+const cors = require("cors");
+const { getIRSAnswer } = require("./irs/router");
+
 const app = express();
 
-// Middleware
+app.use(cors());
 app.use(express.json());
 
-// Root check
-app.get("/", (req, res) => {
-  res.json({
-    message: "USA Tax AI Backend is running"
-  });
-});
-
-// Health check (already working)
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -21,8 +16,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// 🔥 MAIN ASK ROUTE (THIS WAS MISSING)
-app.post("/ask", async (req, res) => {
+app.post("/ask", (req, res) => {
   const { question } = req.body;
 
   if (!question) {
@@ -31,18 +25,17 @@ app.post("/ask", async (req, res) => {
     });
   }
 
-  // Dummy response (IRS logic baad me aayega)
-  return res.json({
-    answer: "IRS logic coming soon. Backend is working perfectly.",
-    receivedQuestion: question
+  const result = getIRSAnswer(question);
+
+  res.json({
+    question,
+    category: result.type,
+    answer: result.answer
   });
 });
 
-// 404 fallback
 app.use((req, res) => {
-  res.status(404).json({
-    error: "Route not found"
-  });
+  res.status(404).json({ error: "Route not found" });
 });
 
 module.exports = app;
