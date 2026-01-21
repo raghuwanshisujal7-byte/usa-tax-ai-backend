@@ -1,39 +1,45 @@
-const deductions = require("./deductions");
+const express = require("express");
+const router = express.Router();
+
+// IRS rule modules (static for now)
 const credits = require("./credits");
+const deductions = require("./deductions");
 
-function getIRSAnswer(question) {
-  const q = question.toLowerCase();
+/**
+ * POST /ask
+ * Body: { question: string }
+ */
+router.post("/ask", (req, res) => {
+  const { question } = req.body;
 
-  if (q.includes("save tax") || q.includes("reduce tax")) {
-    return {
-      type: "general",
-      answer: [
-        ...deductions.basicDeductions,
-        ...credits.basicCredits
-      ]
-    };
+  if (!question) {
+    return res.status(400).json({
+      error: "Question is required"
+    });
   }
 
-  if (q.includes("deduction")) {
-    return {
-      type: "deductions",
-      answer: deductions.basicDeductions
-    };
+  // 🔹 Phase 1: deterministic placeholder logic
+  // (AI + IRS engine will replace this later)
+
+  let insights = [];
+
+  if (/credit/i.test(question)) {
+    insights = credits;
+  } else if (/deduction/i.test(question)) {
+    insights = deductions;
+  } else {
+    insights = [
+      {
+        note: "General tax planning logic will be applied here"
+      }
+    ];
   }
 
-  if (q.includes("credit")) {
-    return {
-      type: "credits",
-      answer: credits.basicCredits
-    };
-  }
+  res.json({
+    answer: "IRS logic engine (v1) executed successfully.",
+    receivedQuestion: question,
+    insights
+  });
+});
 
-  return {
-    type: "unknown",
-    answer: [
-      "Please ask about IRS deductions, tax credits, or saving tax in the USA."
-    ]
-  };
-}
-
-module.exports = { getIRSAnswer };
+module.exports = router;
