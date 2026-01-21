@@ -1,21 +1,19 @@
 const express = require("express");
-const cors = require("cors");
 
 const app = express();
 
-/**
- * --------------------
- * MIDDLEWARE
- * --------------------
- */
-app.use(cors());
+// Middleware
 app.use(express.json());
 
-/**
- * --------------------
- * HEALTH CHECK
- * --------------------
- */
+// Root
+app.get("/", (req, res) => {
+  res.json({
+    service: "USA Tax AI Backend",
+    message: "Backend is live",
+  });
+});
+
+// Health check
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -25,48 +23,8 @@ app.get("/health", (req, res) => {
   });
 });
 
-/**
- * --------------------
- * IRS RULE-BASED CORE (SAFE, NON-HALLUCINATED)
- * --------------------
- */
-function irsRuleEngine(question) {
-  const q = question.toLowerCase();
-
-  if (q.includes("self employment tax")) {
-    return (
-      "In the United States, self-employment tax generally consists of Social Security and Medicare taxes. " +
-      "You may reduce the taxable amount by deducting ordinary and necessary business expenses such as home office costs, " +
-      "internet, phone, professional services, and a portion of health insurance premiums if eligible. " +
-      "Refer to IRS Publication 334 and Publication 535 for official guidance."
-    );
-  }
-
-  if (q.includes("llc") && q.includes("tax")) {
-    return (
-      "An LLC in the U.S. may be taxed as a sole proprietorship, partnership, or corporation depending on elections made. " +
-      "Tax savings may be achieved through proper entity classification, expense deductions, and retirement contributions. " +
-      "Refer to IRS Publication 3402 and Form 8832 for official rules."
-    );
-  }
-
-  if (q.includes("deduction")) {
-    return (
-      "Common U.S. tax deductions include business expenses, retirement contributions, health savings accounts (HSA), " +
-      "and certain education-related costs. Eligibility depends on income type and filing status. " +
-      "Refer to IRS Publication 17 for detailed eligibility rules."
-    );
-  }
-
-  return null;
-}
-
-/**
- * --------------------
- * ASK API (HYBRID ENGINE)
- * --------------------
- */
-app.post("/ask", async (req, res) => {
+// ASK endpoint (IRS engine placeholder)
+app.post("/ask", (req, res) => {
   const { question } = req.body;
 
   if (!question) {
@@ -75,33 +33,18 @@ app.post("/ask", async (req, res) => {
     });
   }
 
-  // 1️⃣ First try IRS rule engine (safe layer)
-  const irsAnswer = irsRuleEngine(question);
-
-  if (irsAnswer) {
-    return res.json({
-      source: "IRS_RULE_ENGINE",
-      answer: irsAnswer,
-      disclaimer:
-        "This response is based on publicly available IRS publications and is not legal or tax advice.",
-    });
-  }
-
-  // 2️⃣ Fallback (AI placeholder – next step)
-  return res.json({
-    source: "AI_FALLBACK",
+  // 🔒 TEMP: rule-based response (no AI yet)
+  res.json({
+    source: "IRS_RULE_ENGINE",
+    question,
     answer:
-      "This question requires advanced analysis. AI-based reasoning will be enabled in the next update.",
+      "This is a placeholder response. IRS rules engine will be connected next.",
     disclaimer:
-      "This platform does not replace a licensed CPA or tax attorney.",
+      "This response is for informational purposes only and is not tax advice.",
   });
 });
 
-/**
- * --------------------
- * 404 HANDLER
- * --------------------
- */
+// 404 fallback
 app.use((req, res) => {
   res.status(404).json({
     error: "Route not found",
