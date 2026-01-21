@@ -1,10 +1,37 @@
 const deductions = require("./deductions");
 const credits = require("./credits");
 
+/**
+ * Core IRS Logic Brain
+ * This function decides which IRS data to return
+ */
 function getIRSAnswer(question) {
+  if (!question || typeof question !== "string") {
+    return {
+      category: "error",
+      answer: "Invalid question format"
+    };
+  }
+
   const q = question.toLowerCase();
 
-  // 1️⃣ General tax saving
+  // 👉 DEDUCTIONS
+  if (q.includes("deduction")) {
+    return {
+      category: "deductions",
+      answer: deductions.basicDeductions
+    };
+  }
+
+  // 👉 CREDITS
+  if (q.includes("credit")) {
+    return {
+      category: "credits",
+      answer: credits.basicCredits
+    };
+  }
+
+  // 👉 GENERIC TAX SAVING
   if (q.includes("save tax") || q.includes("reduce tax")) {
     return {
       category: "general",
@@ -15,29 +42,13 @@ function getIRSAnswer(question) {
     };
   }
 
-  // 2️⃣ Deductions only
-  if (q.includes("deduction")) {
-    return {
-      category: "deductions",
-      answer: deductions.basicDeductions
-    };
-  }
-
-  // 3️⃣ Credits only
-  if (q.includes("credit")) {
-    return {
-      category: "credits",
-      answer: credits.basicCredits
-    };
-  }
-
-  // 4️⃣ Fallback
+  // 👉 FALLBACK
   return {
     category: "unknown",
-    answer: [
-      "Your question is valid, but IRS logic for this case is coming soon."
-    ]
+    answer: "IRS logic is live. Please ask about deductions or credits."
   };
 }
 
-module.exports = { getIRSAnswer };
+module.exports = {
+  getIRSAnswer
+};
