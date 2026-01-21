@@ -1,42 +1,33 @@
 const express = require("express");
 const router = express.Router();
 
-// ✅ correct relative paths
-const credits = require("./credits");
+// correct relative paths
 const deductions = require("../deductions");
+const credits = require("./credits");
 
 router.post("/ask", (req, res) => {
   const { question } = req.body;
 
   if (!question) {
-    return res.status(400).json({
-      error: "Question is required"
-    });
+    return res.status(400).json({ error: "Question is required" });
   }
 
   const q = question.toLowerCase();
-  let insights = [];
 
-  if (q.includes("credit")) {
-    insights = credits;
-  } 
-  else if (q.includes("deduction")) {
-    insights = deductions;
-  } 
-  else if (q.includes("save tax") || q.includes("reduce tax")) {
-    insights = [...deductions, ...credits];
-  } 
-  else {
-    insights = [
-      { note: "IRS logic engine v1: No exact match, generic guidance returned." }
-    ];
+  let response = {
+    answer: "IRS logic coming soon. Backend is working perfectly.",
+    receivedQuestion: question
+  };
+
+  if (q.includes("deduction")) {
+    response.answer = deductions.basicDeductions;
   }
 
-  res.json({
-    answer: "IRS logic engine v1 executed successfully.",
-    receivedQuestion: question,
-    insights
-  });
+  if (q.includes("credit")) {
+    response.answer = credits.basicCredits;
+  }
+
+  res.json(response);
 });
 
 module.exports = router;
