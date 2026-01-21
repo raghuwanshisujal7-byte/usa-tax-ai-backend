@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 
-// IRS rule modules (static for now)
 const credits = require("./credits");
 const deductions = require("./deductions");
 
@@ -18,25 +17,28 @@ router.post("/ask", (req, res) => {
     });
   }
 
-  // 🔹 Phase 1: deterministic placeholder logic
-  // (AI + IRS engine will replace this later)
-
+  const q = question.toLowerCase();
   let insights = [];
 
-  if (/credit/i.test(question)) {
+  if (q.includes("credit")) {
     insights = credits;
-  } else if (/deduction/i.test(question)) {
+  } else if (q.includes("deduction")) {
     insights = deductions;
+  } else if (q.includes("save tax") || q.includes("reduce tax")) {
+    insights = [
+      ...deductions,
+      ...credits
+    ];
   } else {
     insights = [
       {
-        note: "General tax planning logic will be applied here"
+        note: "General IRS tax planning logic will be applied here"
       }
     ];
   }
 
   res.json({
-    answer: "IRS logic engine (v1) executed successfully.",
+    answer: "IRS logic engine v1 executed successfully.",
     receivedQuestion: question,
     insights
   });
