@@ -1,13 +1,12 @@
 const express = require("express");
-const cors = require("cors");
-
-const irsRouter = require("./irs/router");
+const { getIRSAnswer } = require("./irs");
 
 const app = express();
 
-app.use(cors());
+// Middleware
 app.use(express.json());
 
+// Health check
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -17,10 +16,30 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use("/", irsRouter);
+// MAIN ASK ENDPOINT (🔥 REAL IRS LOGIC)
+app.post("/ask", (req, res) => {
+  try {
+    const { question } = req.body;
 
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+    if (!question) {
+      return res.status(400).json({
+        error: "Question is required"
+      });
+    }
+
+    const result = getIRSAnswer(question);
+
+    return res.json({
+      category: result.category,
+      answer: result.answer
+    });
+
+  } catch (err) {
+    console.error("IRS Engine Error:", err);
+    res.status(500).json({
+      error: "Internal IRS Engine Error"
+    });
+  }
 });
 
 module.exports = app;
