@@ -1,29 +1,30 @@
-// Import USA IRS rule definitions
-const usaRules = require("../irs/usaRules");
+// ===============================
+// AI TAX PREDATOR (USA)
+// ===============================
 
-// Import calculation helpers
+const usaRules = require("../irs/usaRules");
 const {
   calculatePresumptiveTax,
-  calculateDeduction,
-  calculateSelfEmploymentTax
+  calculateSelfEmploymentTax,
+  calculateNetIncome
 } = require("../irs/usaCalculator");
 
-// Import audit risk engine
 const { calculateAuditRisk } = require("./riskEngine");
 
 function taxPredator(userData) {
-  // Input normalization
+  // -------------------------------
+  // INPUT NORMALIZATION
+  // -------------------------------
   const income = Number(userData.income || 0);
   const type = (userData.type || "").toUpperCase();
   const filingStatus = userData.filingStatus || "SINGLE";
+  const expenses = userData.expenses || [];
 
   let strategies = [];
 
-  /**
-   * ===============================
-   * FREELANCER — PRESUMPTIVE TAX LOGIC
-   * ===============================
-   */
+  // -------------------------------
+  // FREELANCER – PRESUMPTIVE TAX
+  // -------------------------------
   if (type === "FREELANCER") {
     usaRules.FREELANCER.forEach(rule => {
       if (income <= rule.maxIncome) {
@@ -43,11 +44,27 @@ function taxPredator(userData) {
     });
   }
 
-  /**
-   * ===============================
-   * STANDARD DEDUCTION (USA)
-   * ===============================
-   */
+  // -------------------------------
+  // BUSINESS EXPENSES (Schedule C)
+  // -------------------------------
+  let netIncome = income;
+
+  if (expenses.length > 0) {
+    netIncome = calculateNetIncome(income, expenses);
+
+    strategies.push({
+      strategy: "Business Expense Deduction (Schedule C)",
+      totalExpenses: income - netIncome,
+      netIncome,
+      auditRisk: { score: 30, level: "MEDIUM" },
+      source: usaRules.BUSINESS_EXPENSES.source,
+      explanation: usaRules.BUSINESS_EXPENSES.explanation
+    });
+  }
+
+  // -------------------------------
+  // STANDARD DEDUCTION
+  // -------------------------------
   const standardDeduction =
     usaRules.STANDARD_DEDUCTION[filingStatus] || 0;
 
@@ -59,28 +76,25 @@ function taxPredator(userData) {
     explanation: usaRules.STANDARD_DEDUCTION.explanation
   });
 
-  /**
-   * ===============================
-   * SELF EMPLOYMENT TAX
-   * ===============================
-   */
+  // -------------------------------
+  // SELF EMPLOYMENT TAX
+  // -------------------------------
   strategies.push({
     strategy: "Self Employment Tax",
-    amount: calculateSelfEmploymentTax(income),
-    auditRisk: calculateAuditRisk("Self Employment Tax", income),
+    amount: calculateSelfEmploymentTax(netIncome),
+    auditRisk: calculateAuditRisk("Self Employment Tax", netIncome),
     source: usaRules.SELF_EMPLOYMENT_TAX.source,
     explanation: usaRules.SELF_EMPLOYMENT_TAX.explanation
   });
 
-  /**
-   * ===============================
-   * FINAL RESPONSE
-   * ===============================
-   */
+  // -------------------------------
+  // FINAL RESPONSE
+  // -------------------------------
   return {
     country: "USA",
-    status: "IRS_ANALYSIS",
+    status: "IRS_DAY_2_COMPLETE",
     income,
+    netIncome,
     taxpayerType: type,
     filingStatus,
     strategies,
