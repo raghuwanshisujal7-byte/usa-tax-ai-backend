@@ -1,106 +1,78 @@
-// ===============================
-// AI TAX PREDATOR (USA)
-// ===============================
+/**
+ * ======================================
+ * AI TAX PREDATOR – DAY 3
+ * ======================================
+ * Final brain that returns:
+ * - Final tax payable
+ * - Tax saved
+ * - Strategy explanation
+ */
 
-const usaRules = require("../irs/usaRules");
-const {
-  calculatePresumptiveTax,
-  calculateSelfEmploymentTax,
-  calculateNetIncome
-} = require("../irs/usaCalculator");
+const { simulateTax } = require("../irs/taxSimulator");
+const rules = require("../irs/usaRules");
 
-const { calculateAuditRisk } = require("./riskEngine");
+function analyzeTax(payload) {
+  const {
+    income,
+    type,
+    expenses = [],
+    filingStatus = "SINGLE"
+  } = payload;
 
-function taxPredator(userData) {
-  // -------------------------------
-  // INPUT NORMALIZATION
-  // -------------------------------
-  const income = Number(userData.income || 0);
-  const type = (userData.type || "").toUpperCase();
-  const filingStatus = userData.filingStatus || "SINGLE";
-  const expenses = userData.expenses || [];
+  // Run tax simulation
+  const result = simulateTax({
+    income,
+    type,
+    expenses,
+    filingStatus
+  });
 
-  let strategies = [];
+  const strategies = [];
 
-  // -------------------------------
-  // FREELANCER – PRESUMPTIVE TAX
-  // -------------------------------
-  if (type === "FREELANCER") {
-    usaRules.FREELANCER.forEach(rule => {
-      if (income <= rule.maxIncome) {
-        const taxableIncome = calculatePresumptiveTax(
-          income,
-          rule.taxablePercent
-        );
-
-        strategies.push({
-          strategy: rule.section,
-          taxableIncome,
-          auditRisk: calculateAuditRisk(rule.section, income),
-          source: rule.source,
-          explanation: rule.explanation
-        });
-      }
+  if (type === "freelancer") {
+    strategies.push({
+      strategy: "IRC §44ADA (Presumptive Taxation)",
+      benefit: "Lower compliance & simplified taxation",
+      source: "IRS Publication 334",
+      applied: result.breakdown.presumptiveTaxableIncome !== null
     });
   }
 
-  // -------------------------------
-  // BUSINESS EXPENSES (Schedule C)
-  // -------------------------------
-  let netIncome = income;
+  if (rules.STANDARD_DEDUCTION?.[filingStatus]) {
+    strategies.push({
+      strategy: "Standard Deduction",
+      benefit: `Deduction of $${rules.STANDARD_DEDUCTION[filingStatus]}`,
+      source: "IRS Publication 501",
+      applied: true
+    });
+  }
 
   if (expenses.length > 0) {
-    netIncome = calculateNetIncome(income, expenses);
-
     strategies.push({
       strategy: "Business Expense Deduction (Schedule C)",
-      totalExpenses: income - netIncome,
-      netIncome,
-      auditRisk: { score: 30, level: "MEDIUM" },
-      source: usaRules.BUSINESS_EXPENSES.source,
-      explanation: usaRules.BUSINESS_EXPENSES.explanation
+      benefit: "Reduces net taxable income",
+      source: "IRS Schedule C",
+      applied: true
     });
   }
 
-  // -------------------------------
-  // STANDARD DEDUCTION
-  // -------------------------------
-  const standardDeduction =
-    usaRules.STANDARD_DEDUCTION[filingStatus] || 0;
-
-  strategies.push({
-    strategy: "Standard Deduction",
-    amount: standardDeduction,
-    auditRisk: { score: 5, level: "LOW" },
-    source: usaRules.STANDARD_DEDUCTION.source,
-    explanation: usaRules.STANDARD_DEDUCTION.explanation
-  });
-
-  // -------------------------------
-  // SELF EMPLOYMENT TAX
-  // -------------------------------
-  strategies.push({
-    strategy: "Self Employment Tax",
-    amount: calculateSelfEmploymentTax(netIncome),
-    auditRisk: calculateAuditRisk("Self Employment Tax", netIncome),
-    source: usaRules.SELF_EMPLOYMENT_TAX.source,
-    explanation: usaRules.SELF_EMPLOYMENT_TAX.explanation
-  });
-
-  // -------------------------------
-  // FINAL RESPONSE
-  // -------------------------------
   return {
     country: "USA",
-    status: "IRS_DAY_2_COMPLETE",
+    status: "IRS_DAY_3_COMPLETE",
+    taxpayerType: type.toUpperCase(),
     income,
-    netIncome,
-    taxpayerType: type,
     filingStatus,
+    comparison: {
+      withoutPlanning: result.withoutPlanning,
+      withPlanning: result.withPlanning
+    },
+    finalTaxPayable: result.withPlanning,
+    taxSaved: result.taxSaved,
+    breakdown: result.breakdown,
     strategies,
     disclaimer:
       "This analysis is based on publicly available IRS laws and publications. Final filing should be reviewed by a licensed tax professional."
   };
 }
 
-module.exports = { taxPredator };
+module.exports = { analyzeTax };
