@@ -1,20 +1,29 @@
+// Import USA IRS rule definitions
 const usaRules = require("../irs/usaRules");
+
+// Import calculation helpers
 const {
   calculatePresumptiveTax,
   calculateDeduction,
   calculateSelfEmploymentTax
 } = require("../irs/usaCalculator");
 
+// Import audit risk engine
 const { calculateAuditRisk } = require("./riskEngine");
 
 function taxPredator(userData) {
+  // Input normalization
   const income = Number(userData.income || 0);
   const type = (userData.type || "").toUpperCase();
   const filingStatus = userData.filingStatus || "SINGLE";
 
   let strategies = [];
 
-  // FREELANCER RULES (USA)
+  /**
+   * ===============================
+   * FREELANCER — PRESUMPTIVE TAX LOGIC
+   * ===============================
+   */
   if (type === "FREELANCER") {
     usaRules.FREELANCER.forEach(rule => {
       if (income <= rule.maxIncome) {
@@ -23,12 +32,10 @@ function taxPredator(userData) {
           rule.taxablePercent
         );
 
-        const risk = calculateAuditRisk(rule.section, income);
-
         strategies.push({
           strategy: rule.section,
           taxableIncome,
-          auditRisk: risk,
+          auditRisk: calculateAuditRisk(rule.section, income),
           source: rule.source,
           explanation: rule.explanation
         });
@@ -36,7 +43,11 @@ function taxPredator(userData) {
     });
   }
 
-  // STANDARD DEDUCTION
+  /**
+   * ===============================
+   * STANDARD DEDUCTION (USA)
+   * ===============================
+   */
   const standardDeduction =
     usaRules.STANDARD_DEDUCTION[filingStatus] || 0;
 
@@ -48,21 +59,27 @@ function taxPredator(userData) {
     explanation: usaRules.STANDARD_DEDUCTION.explanation
   });
 
-  // SELF EMPLOYMENT TAX
-  const seTax = calculateSelfEmploymentTax(income);
-  const seRisk = calculateAuditRisk("Self Employment Tax", income);
-
+  /**
+   * ===============================
+   * SELF EMPLOYMENT TAX
+   * ===============================
+   */
   strategies.push({
     strategy: "Self Employment Tax",
-    amount: seTax,
-    auditRisk: seRisk,
+    amount: calculateSelfEmploymentTax(income),
+    auditRisk: calculateAuditRisk("Self Employment Tax", income),
     source: usaRules.SELF_EMPLOYMENT_TAX.source,
     explanation: usaRules.SELF_EMPLOYMENT_TAX.explanation
   });
 
+  /**
+   * ===============================
+   * FINAL RESPONSE
+   * ===============================
+   */
   return {
     country: "USA",
-    status: "IRS_AUDIT_AWARE_ANALYSIS",
+    status: "IRS_ANALYSIS",
     income,
     taxpayerType: type,
     filingStatus,
