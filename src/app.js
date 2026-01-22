@@ -1,24 +1,31 @@
 const express = require("express");
-const { getIRSAnswer } = require("./irs");
+const cors = require("cors");
 
 const app = express();
+
+/* =========================
+   GLOBAL MIDDLEWARE
+========================= */
+app.use(cors());
 app.use(express.json());
 
-app.post("/ask", (req, res) => {
-  const { question } = req.body;
-  const response = getIRSAnswer(question);
-  res.json({
-    receivedQuestion: question,
-    answer: response.answer
-  });
-});
+/* =========================
+   ROUTES
+========================= */
 
-app.get("/health", (req, res) => {
+// IRS related routes (agar pehle se hai)
+app.use("/api/irs", require("./irs/router"));
+
+// ✅ AI ROUTE (STEP 4.3 — YEHI ADD KARNA THA)
+app.use("/api/ai", require("./routes/ai"));
+
+/* =========================
+   HEALTH CHECK
+========================= */
+app.get("/", (req, res) => {
   res.json({
-    status: "ok",
-    service: "USA Tax AI Backend",
-    environment: process.env.NODE_ENV || "production",
-    timestamp: new Date().toISOString()
+    status: "OK",
+    message: "USA Tax AI Backend running 🚀",
   });
 });
 
