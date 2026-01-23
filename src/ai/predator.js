@@ -2,24 +2,27 @@ const usaRules = require("../irs/usaRules");
 const riskEngine = require("./riskEngine");
 
 module.exports = function taxPredator(input) {
-  const taxpayerType = input.type?.toUpperCase();
-
-  if (!taxpayerType) {
-    throw new Error("Taxpayer type missing");
+  if (!input || !input.type) {
+    throw new Error("Taxpayer type missing in input");
   }
+
+  const taxpayerType = String(input.type).toUpperCase();
+
+  console.log("TAXPAYER TYPE:", taxpayerType);
+  console.log("AVAILABLE RULE KEYS:", Object.keys(usaRules));
 
   const rules = usaRules[taxpayerType];
 
-  if (!Array.isArray(rules)) {
+  if (!rules || !Array.isArray(rules)) {
     throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  const applicableRule = rules.find(rule => {
-    return input.income <= rule.maxIncome;
-  });
+  const applicableRule = rules.find(
+    rule => input.income <= rule.maxIncome
+  );
 
   if (!applicableRule) {
-    throw new Error("No applicable IRS rule matched");
+    throw new Error("No applicable IRS rule matched for income");
   }
 
   const taxableIncome =
