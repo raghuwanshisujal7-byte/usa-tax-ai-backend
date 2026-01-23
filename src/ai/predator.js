@@ -12,22 +12,14 @@ function taxPredator(input) {
     dependents = 0,
   } = input;
 
-  // 🔥 FIX: FORCE UPPERCASE (matches usaRules.js)
   const taxpayerType = String(type).toUpperCase();
-
   const rules = usaRules[taxpayerType];
 
   if (!rules || !Array.isArray(rules)) {
     throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  const presumptiveRule = rules.find(
-    (r) => typeof r.taxablePercent === "number"
-  );
-
-  if (!presumptiveRule) {
-    throw new Error("Presumptive tax rule not found");
-  }
+  const presumptiveRule = rules[0];
 
   const presumptiveTaxableIncome = calculatePresumptiveTax(
     income,
@@ -53,20 +45,15 @@ function taxPredator(input) {
 
     auditRisk: {
       level: "LOW",
-      score: 25,
+      score: 20,
       reasons: [
         "Presumptive taxation",
         "Single income source",
-        "Standard IRS reporting",
+        "Standard IRS structure",
       ],
     },
 
-    strategy: {
-      section: presumptiveRule.section,
-      taxablePercent: presumptiveRule.taxablePercent,
-      source: presumptiveRule.source,
-      explanation: presumptiveRule.explanation,
-    },
+    strategy: presumptiveRule,
 
     disclaimer:
       "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional.",
