@@ -1,45 +1,81 @@
-const usaRules = require("../irs");
-
 /**
- * TAX PREDATOR ENGINE (STABLE)
- * Input: { income, type, filingStatus, dependents }
+ * AI TAX PREDATOR ENGINE
+ * ---------------------
+ * - Determines IRS strategy based on taxpayer type & income
+ * - Safe against undefined rules, empty arrays, and find() crashes
  */
+
+const irsRules = require("../irs/usaRules");
+const auditRiskEngine = require("../irs/auditRiskEngine");
+
 module.exports = function taxPredator(input) {
+  if (!input) {
+    throw new Error("Input payload missing");
+  }
+
   const {
-    income = 0,
+    income,
     type,
     filingStatus = "SINGLE",
     dependents = 0,
   } = input;
 
-  if (!type) {
-    throw new Error("Taxpayer type is required");
+  if (!income || !type) {
+    throw new Error("Income or taxpayer type missing");
   }
 
-  const taxpayerType = type.toUpperCase();
+  const taxpayerType = String(type).toUpperCase();
 
-  console.log("TAXPAYER TYPE:", taxpayerType);
-  console.log("AVAILABLE RULE KEYS:", Object.keys(usaRules));
+  // -------------------------------
+  // STEP 1: LOAD IRS RULES
+  // -------------------------------
+  const rules = irsRules[taxpayerType];
 
-  const rules = usaRules[taxpayerType];
-
-  // 🔒 SAFETY CHECK (NO MORE .find ERROR)
   if (!Array.isArray(rules)) {
-    throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
+    throw new Error(
+      `No IRS rules found for taxpayer type: ${taxpayerType}`
+    );
   }
 
-  // For now: pick first valid rule (stable baseline)
-  const rule = rules[0];
+  // -------------------------------
+  // STEP 2: SELECT APPLICABLE RULE
+  // -------------------------------
+  const rule = rules.find(r => {
+    if (!r) return false;
+    if (typeof r.maxIncome !== "number") return true;
+    return income <= r.maxIncome;
+  });
 
   if (!rule) {
-    throw new Error(`IRS rule missing for taxpayer type: ${taxpayerType}`);
+    throw new Error(
+      `No applicable IRS rule found for income ${income}`
+    );
   }
 
+  // -------------------------------
+  // STEP 3: TAX CALCULATION
+  // -------------------------------
   const taxableIncome =
-    rule.taxablePercent && rule.maxIncome
-      ? Math.min(income, rule.maxIncome) * (rule.taxablePercent / 100)
+    rule.taxablePercent
+      ? Math.round((income * rule.taxablePercent) / 100)
       : income;
 
+  const selfEmploymentTax = Math.round(taxableIncome * 0.153); // 15.3%
+
+  // -------------------------------
+  // STEP 4: AUDIT RISK ENGINE
+  // -------------------------------
+  const auditRisk = auditRiskEngine({
+    income,
+    taxpayerType,
+    filingStatus,
+    dependents,
+    strategy: rule.section,
+  });
+
+  // -------------------------------
+  // FINAL RESPONSE
+  // -------------------------------
   return {
     country: "USA",
     status: "IRS_ENGINE_OK",
@@ -50,18 +86,10 @@ module.exports = function taxPredator(input) {
 
     breakdown: {
       presumptiveTaxableIncome: taxableIncome,
-      selfEmploymentTax: Math.round(taxableIncome * 0.153),
+      selfEmploymentTax,
     },
 
-    auditRisk: {
-      level: "LOW",
-      score: 20,
-      reasons: [
-        "Presumptive taxation",
-        "Single income source",
-        "Standard IRS structure",
-      ],
-    },
+    auditRisk,
 
     strategy: {
       section: rule.section,
@@ -72,6 +100,6 @@ module.exports = function taxPredator(input) {
     },
 
     disclaimer:
-      "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional.",
+      "This analysis is based on publicly available IRS laws and publications. Final filing should be reviewed by a licensed tax professional.",
   };
 };
