@@ -1,18 +1,22 @@
 // src/ai/riskEngine.js
 
-module.exports = function riskEngine({ income, taxpayerType, strategies }) {
+module.exports = function riskEngine({ income, taxpayerType, strategy }) {
   let score = 0;
   let reasons = [];
 
   if (income > 100000) {
-    score += 15;
+    score += 10;
     reasons.push("High income bracket");
   }
 
-  const aggressive = strategies.find(s => s.name === "AGGRESSIVE");
-  if (aggressive) {
-    score += 20;
-    reasons.push("Aggressive tax strategy selected");
+  if (taxpayerType === "FREELANCER") {
+    score += 5;
+    reasons.push("Self-employed income");
+  }
+
+  if (strategy?.section?.includes("Presumptive")) {
+    score -= 10;
+    reasons.push("Presumptive taxation reduces audit complexity");
   }
 
   let level = "LOW";
