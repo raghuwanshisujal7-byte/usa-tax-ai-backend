@@ -1,56 +1,57 @@
-// src/ai/predator.js
-
-const irsRules = require("../irs/usaRules");
-const auditRiskEngine = require("./riskEngine");
+const usaRules = require("../irs/usaRules");
+const riskEngine = require("./riskEngine");
 
 module.exports = function taxPredator(input) {
-  const {
-    income,
-    type,
-    filingStatus = "SINGLE",
-    dependents = 0
-  } = input;
+  const taxpayerType = input.type?.toUpperCase();
 
-  const taxpayerType = type.toUpperCase();
-  const rules = irsRules[taxpayerType];
+  if (!taxpayerType) {
+    throw new Error("Taxpayer type missing");
+  }
 
-  if (!rules) {
+  const rules = usaRules[taxpayerType];
+
+  if (!Array.isArray(rules)) {
     throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  // --- Build strategies ---
-  const strategies = Object.entries(rules).map(([key, rule]) => {
-    return {
-      key: key.toUpperCase(),
-      strategy: rule.strategy,
-      taxablePercent: rule.taxablePercent,
-      taxableIncome: Math.round(income * rule.taxablePercent),
-      source: rule.source,
-      explanation: rule.explanation
-    };
+  const applicableRule = rules.find(rule => {
+    return input.income <= rule.maxIncome;
   });
 
-  // --- Choose recommended strategy (BALANCED priority) ---
-  const recommended =
-    strategies.find(s => s.key === "BALANCED") || strategies[0];
+  if (!applicableRule) {
+    throw new Error("No applicable IRS rule matched");
+  }
 
-  // --- Audit Risk ---
-  const auditRisk = auditRiskEngine({
-    income,
-    strategy: recommended.key.toLowerCase()
+  const taxableIncome =
+    (input.income * applicableRule.taxablePercent) / 100;
+
+  const auditRisk = riskEngine({
+    income: input.income,
+    type: taxpayerType
   });
 
   return {
     country: "USA",
     status: "IRS_ENGINE_OK",
     taxpayerType,
-    filingStatus,
-    dependents,
-    income,
-    strategies,
-    recommended,
+    filingStatus: input.filingStatus,
+    dependents: input.dependents || 0,
+    income: input.income,
+
+    breakdown: {
+      presumptiveTaxableIncome: taxableIncome
+    },
+
+    strategy: {
+      section: applicableRule.section,
+      taxablePercent: applicableRule.taxablePercent,
+      maxIncome: applicableRule.maxIncome,
+      source: applicableRule.source,
+      explanation: applicableRule.explanation
+    },
+
     auditRisk,
     disclaimer:
-      "This analysis is based on publicly available IRS laws and publications. Final filing should be reviewed by a licensed tax professional."
+      "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional."
   };
 };
