@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
-// IMPORTANT: predator.js MUST export a function
-const taxPredator = require("../ai/predator");
+// ✅ FIXED PATH (IMPORTANT)
+const taxPredator = require("../ai/predator.js");
 
 /**
  * POST /api/ai/analyze
@@ -11,20 +11,24 @@ router.post("/analyze", (req, res) => {
   try {
     const input = req.body;
 
-    // 1️⃣ Hard validation
     if (!input || Object.keys(input).length === 0) {
       return res.status(400).json({
         error: "Request body is empty",
       });
     }
 
-    if (!input.income || !input.type) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        required: ["income", "type"],
-      });
-    }
+    // ✅ predator MUST be a function
+    const result = taxPredator(input);
 
-    // 2️⃣ Default values (VERY IMPORTANT)
-    const safeInput = {
-      income: Num
+    return res.json(result);
+  } catch (error) {
+    console.error("AI Analyze Error:", error);
+
+    return res.status(500).json({
+      error: "Internal AI Engine Error",
+      message: error.message,
+    });
+  }
+});
+
+module.exports = router;
