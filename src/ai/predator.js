@@ -1,123 +1,51 @@
 const usaRules = require("../irs/usaRules");
-const {
-  calculatePresumptiveTax,
-  calculateDeduction,
-  calculateSelfEmploymentTax,
-} = require("../irs/usaCalculator");
+const { calculatePresumptiveTax } = require("../irs/usaCalculator");
 
-module.exports = function taxPredator(input) {
-  const income = Number(input.income);
-  const type = input.type.toUpperCase();
-  const filingStatus = input.filingStatus || "SINGLE";
-  const dependents = input.dependents || 0;
-  const expenses = input.expenses || [];
+function taxPredator(input) {
+  const {
+    income = 0,
+    type = "freelancer",
+    filingStatus = "SINGLE",
+    dependents = 0,
+  } = input;
 
-  // 🛑 Safety guard
-  if (!usaRules[type]) {
-    throw new Error(`No IRS rules found for taxpayer type: ${type}`);
+  const taxpayerType = type.toUpperCase();
+
+  const rules = usaRules[taxpayerType];
+  if (!rules || !Array.isArray(rules)) {
+    throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  const rules = usaRules[type];
-  let strategies = [];
-  let taxableIncome = income;
-
-  // ==============================
-  // 1️⃣ Presumptive Tax (IRC 44ADA)
-  // ==============================
-  if (rules.FREELANCER && rules.FREELANCER.length > 0) {
-    const rule = rules.FREELANCER[0];
-
-    if (rule.taxablePercent !== undefined) {
-      taxableIncome = calculatePresumptiveTax(
-        income,
-        rule.taxablePercent
-      );
-
-      strategies.push({
-        strategy: rule.section,
-        taxableIncome,
-        benefit: "Lower compliance & simplified taxation",
-        source: rule.source,
-        applied: true,
-      });
-    }
-  }
-
-  // ==============================
-  // 2️⃣ Standard Deduction
-  // ==============================
-  let standardDeduction = 0;
-  if (rules.STANDARD_DEDUCTION) {
-    standardDeduction =
-      rules.STANDARD_DEDUCTION[filingStatus] || 0;
-
-    strategies.push({
-      strategy: "Standard Deduction",
-      amount: standardDeduction,
-      source: rules.STANDARD_DEDUCTION.source,
-      applied: true,
-    });
-  }
-
-  // ==============================
-  // 3️⃣ Business Expenses
-  // ==============================
-  let totalExpenses = expenses.reduce(
-    (sum, e) => sum + Number(e.amount || 0),
-    0
+  // ✅ SAFE RULE PICK
+  const presumptiveRule = rules.find(
+    (r) => typeof r.taxablePercent === "number"
   );
 
-  if (totalExpenses > 0) {
-    strategies.push({
-      strategy: "Business Expense Deduction (Schedule C)",
-      totalExpenses,
-      source: "IRS Schedule C",
-      applied: true,
-    });
+  if (!presumptiveRule) {
+    throw new Error("Presumptive tax rule not found");
   }
 
-  // ==============================
-  // 4️⃣ Self Employment Tax
-  // ==============================
-  const selfEmploymentTax =
-    rules.SELF_EMPLOYMENT_TAX?.rate
-      ? calculateSelfEmploymentTax(income)
-      : 0;
+  const taxableIncome = calculatePresumptiveTax(
+    income,
+    presumptiveRule.taxablePercent
+  );
 
-  // ==============================
-  // 5️⃣ Audit Risk Engine (simple v1)
-  // ==============================
-  let auditScore = 20;
-  if (income > 100000) auditScore += 15;
-  if (totalExpenses > income * 0.5) auditScore += 25;
-
-  const auditRisk = {
-    score: auditScore,
-    level:
-      auditScore < 30
-        ? "LOW"
-        : auditScore < 60
-        ? "MEDIUM"
-        : "HIGH",
-  };
-
-  // ==============================
-  // FINAL RESPONSE
-  // ==============================
   return {
     country: "USA",
-    status: "IRS_AI_OK",
-    taxpayerType: type,
+    status: "IRS_DAY_4_RISK_ENGINE_READY",
+    taxpayerType,
     income,
     filingStatus,
     dependents,
-    taxableIncome,
-    standardDeduction,
-    expenses: totalExpenses,
-    selfEmploymentTax,
-    auditRisk,
-    strategies,
+    strategy: {
+      name: presumptiveRule.section,
+      taxablePercent: presumptiveRule.taxablePercent,
+      taxableIncome,
+      source: presumptiveRule.source,
+    },
     disclaimer:
-      "This analysis is based on publicly available IRS laws and publications. Final filing should be reviewed by a licensed tax professional.",
+      "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional.",
   };
-};
+}
+
+module.exports = taxPredator;
