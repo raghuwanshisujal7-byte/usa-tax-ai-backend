@@ -12,8 +12,8 @@ function taxPredator(input) {
     dependents = 0,
   } = input;
 
-  // 🔥 KEY FIX: normalize to lowercase
-  const taxpayerType = String(type).toLowerCase();
+  // 🔥 FIX: FORCE UPPERCASE (matches usaRules.js)
+  const taxpayerType = String(type).toUpperCase();
 
   const rules = usaRules[taxpayerType];
 
@@ -21,7 +21,6 @@ function taxPredator(input) {
     throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  // Presumptive rule
   const presumptiveRule = rules.find(
     (r) => typeof r.taxablePercent === "number"
   );
@@ -41,11 +40,11 @@ function taxPredator(input) {
 
   return {
     country: "USA",
-    status: "IRS_DAY_4_RISK_ENGINE_READY",
-    taxpayerType: taxpayerType.toUpperCase(),
-    income,
+    status: "IRS_ENGINE_OK",
+    taxpayerType,
     filingStatus,
     dependents,
+    income,
 
     breakdown: {
       presumptiveTaxableIncome,
@@ -57,7 +56,7 @@ function taxPredator(input) {
       score: 25,
       reasons: [
         "Presumptive taxation",
-        "Simple income structure",
+        "Single income source",
         "Standard IRS reporting",
       ],
     },
