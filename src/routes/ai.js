@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 
 /**
- * IMPORTANT:
- * predator.js exports a FUNCTION (not object)
+ * predator.js EK FUNCTION EXPORT karta hai
+ * object nahi
  */
 const taxPredator = require("../ai/predator");
 
@@ -14,21 +14,26 @@ router.post("/analyze", (req, res) => {
   try {
     const input = req.body;
 
-    if (!input || Object.keys(input).length === 0) {
+    // 🛑 Safety check
+    if (!input || typeof input !== "object" || Object.keys(input).length === 0) {
       return res.status(400).json({
-        error: "Request body is empty"
+        error: "Request body is empty or invalid",
       });
     }
 
+    // 🧠 MAIN AI CALL
     const result = taxPredator(input);
 
+    // ✅ Success response
     return res.json(result);
-  } catch (error) {
-    console.error("AI Analyze Error:", error.message);
 
+  } catch (error) {
+    console.error("AI Analyze Error:", error);
+
+    // ❌ Fail-safe response
     return res.status(500).json({
       error: "Internal AI Engine Error",
-      message: error.message
+      message: error.message,
     });
   }
 });
