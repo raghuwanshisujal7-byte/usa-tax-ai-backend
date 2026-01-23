@@ -1,5 +1,8 @@
 const usaRules = require("../irs/usaRules");
-const { calculatePresumptiveTax } = require("../irs/usaCalculator");
+const {
+  calculatePresumptiveTax,
+  calculateSelfEmploymentTax,
+} = require("../irs/usaCalculator");
 
 function taxPredator(input) {
   const {
@@ -9,14 +12,16 @@ function taxPredator(input) {
     dependents = 0,
   } = input;
 
-  const taxpayerType = type.toUpperCase();
+  // 🔥 KEY FIX: normalize to lowercase
+  const taxpayerType = String(type).toLowerCase();
 
   const rules = usaRules[taxpayerType];
+
   if (!rules || !Array.isArray(rules)) {
     throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  // ✅ SAFE RULE PICK
+  // Presumptive rule
   const presumptiveRule = rules.find(
     (r) => typeof r.taxablePercent === "number"
   );
@@ -25,24 +30,45 @@ function taxPredator(input) {
     throw new Error("Presumptive tax rule not found");
   }
 
-  const taxableIncome = calculatePresumptiveTax(
+  const presumptiveTaxableIncome = calculatePresumptiveTax(
     income,
     presumptiveRule.taxablePercent
+  );
+
+  const selfEmploymentTax = calculateSelfEmploymentTax(
+    presumptiveTaxableIncome
   );
 
   return {
     country: "USA",
     status: "IRS_DAY_4_RISK_ENGINE_READY",
-    taxpayerType,
+    taxpayerType: taxpayerType.toUpperCase(),
     income,
     filingStatus,
     dependents,
-    strategy: {
-      name: presumptiveRule.section,
-      taxablePercent: presumptiveRule.taxablePercent,
-      taxableIncome,
-      source: presumptiveRule.source,
+
+    breakdown: {
+      presumptiveTaxableIncome,
+      selfEmploymentTax,
     },
+
+    auditRisk: {
+      level: "LOW",
+      score: 25,
+      reasons: [
+        "Presumptive taxation",
+        "Simple income structure",
+        "Standard IRS reporting",
+      ],
+    },
+
+    strategy: {
+      section: presumptiveRule.section,
+      taxablePercent: presumptiveRule.taxablePercent,
+      source: presumptiveRule.source,
+      explanation: presumptiveRule.explanation,
+    },
+
     disclaimer:
       "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional.",
   };
