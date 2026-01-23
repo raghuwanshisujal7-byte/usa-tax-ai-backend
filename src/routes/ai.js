@@ -1,12 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
-// ✅ FIXED PATH (IMPORTANT)
-const taxPredator = require("../ai/predator.js");
+const taxPredator = require("../ai/predator");
 
-/**
- * POST /api/ai/analyze
- */
 router.post("/analyze", (req, res) => {
   try {
     const input = req.body;
@@ -17,12 +13,10 @@ router.post("/analyze", (req, res) => {
       });
     }
 
-    // ✅ predator MUST be a function
     const result = taxPredator(input);
-
     return res.json(result);
   } catch (error) {
-    console.error("AI Analyze Error:", error);
+    console.error("AI Analyze Error:", error.message);
 
     return res.status(500).json({
       error: "Internal AI Engine Error",
