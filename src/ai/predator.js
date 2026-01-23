@@ -1,15 +1,18 @@
 /**
  * ======================================
- * AI TAX PREDATOR – DAY 3
+ * AI TAX PREDATOR – DAY 3 (FINAL)
  * ======================================
- * Final brain that returns:
+ * Returns:
  * - Final tax payable
  * - Tax saved
- * - Strategy explanation
+ * - WITH vs WITHOUT planning
+ * - Audit risk score
+ * - IRS-safe explanations
  */
 
 const { simulateTax } = require("../irs/taxSimulator");
 const rules = require("../irs/usaRules");
+const { calculateAuditRisk } = require("../irs/auditRiskEngine");
 
 function analyzeTax(payload) {
   const {
@@ -19,7 +22,9 @@ function analyzeTax(payload) {
     filingStatus = "SINGLE"
   } = payload;
 
-  // Run tax simulation
+  // ===============================
+  // TAX SIMULATION
+  // ===============================
   const result = simulateTax({
     income,
     type,
@@ -27,6 +32,19 @@ function analyzeTax(payload) {
     filingStatus
   });
 
+  // ===============================
+  // AUDIT RISK CALCULATION
+  // ===============================
+  const auditRisk = calculateAuditRisk({
+    income,
+    netIncome: result.breakdown.netIncome,
+    expenses,
+    usedPresumptive: result.breakdown.presumptiveTaxableIncome !== null
+  });
+
+  // ===============================
+  // STRATEGY EXPLANATION
+  // ===============================
   const strategies = [];
 
   if (type === "freelancer") {
@@ -56,20 +74,28 @@ function analyzeTax(payload) {
     });
   }
 
+  // ===============================
+  // FINAL RESPONSE
+  // ===============================
   return {
     country: "USA",
     status: "IRS_DAY_3_COMPLETE",
     taxpayerType: type.toUpperCase(),
     income,
     filingStatus,
+
     comparison: {
       withoutPlanning: result.withoutPlanning,
       withPlanning: result.withPlanning
     },
+
     finalTaxPayable: result.withPlanning,
     taxSaved: result.taxSaved,
+
     breakdown: result.breakdown,
+    auditRisk,
     strategies,
+
     disclaimer:
       "This analysis is based on publicly available IRS laws and publications. Final filing should be reviewed by a licensed tax professional."
   };
