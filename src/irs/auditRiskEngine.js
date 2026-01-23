@@ -1,69 +1,51 @@
 /**
- * ======================================
- * AUDIT RISK ENGINE – DAY 3
- * ======================================
- * Calculates IRS audit risk based on:
- * - Income
- * - Deductions
- * - Presumptive taxation
- * - Expense ratio
+ * AUDIT RISK ENGINE
+ * ----------------
+ * Returns audit risk score & level
+ * Must EXPORT A FUNCTION (important)
  */
 
-function calculateAuditRisk({
+module.exports = function auditRiskEngine({
   income,
-  netIncome,
-  expenses = [],
-  usedPresumptive
+  taxpayerType,
+  filingStatus,
+  dependents,
+  strategy,
 }) {
   let score = 0;
   const reasons = [];
 
-  // High income → higher scrutiny
+  // High income risk
   if (income > 100000) {
-    score += 20;
+    score += 10;
     reasons.push("High income bracket");
   }
 
-  // Expense ratio check
-  const totalExpenses = expenses.reduce(
-    (sum, e) => sum + (e.amount || 0),
-    0
-  );
-
-  const expenseRatio = totalExpenses / income;
-
-  if (expenseRatio > 0.5) {
-    score += 30;
-    reasons.push("Very high business expense ratio");
-  } else if (expenseRatio > 0.3) {
-    score += 15;
-    reasons.push("Moderate business expense ratio");
+  // Freelancer / self-employed risk
+  if (taxpayerType === "FREELANCER") {
+    score += 5;
+    reasons.push("Self-employed income");
   }
 
-  // Presumptive taxation lowers audit risk
-  if (usedPresumptive) {
-    score -= 15;
+  // Presumptive taxation reduces audit risk
+  if (strategy && strategy.toUpperCase().includes("PRESUMPTIVE")) {
+    score -= 5;
     reasons.push("Presumptive taxation reduces audit complexity");
   }
 
-  // Net income too low compared to gross
-  if (netIncome < income * 0.4) {
-    score += 20;
-    reasons.push("Low net income compared to gross income");
+  // Dependents slightly reduce risk
+  if (dependents > 0) {
+    score -= 2;
+    reasons.push("Dependents declared");
   }
 
-  // Normalize score
-  score = Math.max(0, Math.min(score, 100));
-
   let level = "LOW";
-  if (score >= 60) level = "HIGH";
-  else if (score >= 30) level = "MEDIUM";
+  if (score >= 25) level = "HIGH";
+  else if (score >= 15) level = "MEDIUM";
 
   return {
     score,
     level,
-    reasons
+    reasons,
   };
-}
-
-module.exports = { calculateAuditRisk };
+};
