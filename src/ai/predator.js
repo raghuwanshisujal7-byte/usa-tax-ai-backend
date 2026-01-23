@@ -1,34 +1,71 @@
-const usaRules = require("../irs/usaRules");
-const {
-  calculatePresumptiveTax,
-  calculateSelfEmploymentTax,
-} = require("../irs/usaCalculator");
+// src/ai/predator.js
 
-function taxPredator(input) {
-  const {
-    income = 0,
-    type = "freelancer",
-    filingStatus = "SINGLE",
-    dependents = 0,
-  } = input;
+const irsRules = require("../irs/rules");
+const riskEngine = require("./riskEngine");
 
-  const taxpayerType = String(type).toUpperCase();
-  const rules = usaRules[taxpayerType];
+function normalizeType(type) {
+  return String(type || "").trim().toUpperCase();
+}
 
-  if (!rules || !Array.isArray(rules)) {
+module.exports = function taxPredator(input) {
+  if (!input || !input.type || !input.income) {
+    throw new Error("Invalid input for tax analysis");
+  }
+
+  const taxpayerType = normalizeType(input.type);
+  const income = Number(input.income);
+  const filingStatus = input.filingStatus || "SINGLE";
+  const dependents = Number(input.dependents || 0);
+
+  const rules = irsRules[taxpayerType];
+  if (!rules) {
     throw new Error(`No IRS rules found for taxpayer type: ${taxpayerType}`);
   }
 
-  const presumptiveRule = rules[0];
+  // ================================
+  // STRATEGY 1: SAFE
+  // ================================
+  const safeStrategy = {
+    name: "SAFE",
+    strategy: rules.safe.strategy,
+    taxableIncome: income * rules.safe.taxablePercent,
+    taxablePercent: rules.safe.taxablePercent * 100,
+    source: rules.safe.source,
+    explanation: rules.safe.explanation
+  };
 
-  const presumptiveTaxableIncome = calculatePresumptiveTax(
+  // ================================
+  // STRATEGY 2: BALANCED
+  // ================================
+  const balancedStrategy = {
+    name: "BALANCED",
+    strategy: rules.balanced.strategy,
+    taxableIncome: income * rules.balanced.taxablePercent,
+    taxablePercent: rules.balanced.taxablePercent * 100,
+    source: rules.balanced.source,
+    explanation: rules.balanced.explanation
+  };
+
+  // ================================
+  // STRATEGY 3: AGGRESSIVE
+  // ================================
+  const aggressiveStrategy = {
+    name: "AGGRESSIVE",
+    strategy: rules.aggressive.strategy,
+    taxableIncome: income * rules.aggressive.taxablePercent,
+    taxablePercent: rules.aggressive.taxablePercent * 100,
+    source: rules.aggressive.source,
+    explanation: rules.aggressive.explanation,
+    warning: "Higher audit risk. Documentation required."
+  };
+
+  const strategies = [safeStrategy, balancedStrategy, aggressiveStrategy];
+
+  const auditRisk = riskEngine({
     income,
-    presumptiveRule.taxablePercent
-  );
-
-  const selfEmploymentTax = calculateSelfEmploymentTax(
-    presumptiveTaxableIncome
-  );
+    taxpayerType,
+    strategies
+  });
 
   return {
     country: "USA",
@@ -37,27 +74,10 @@ function taxPredator(input) {
     filingStatus,
     dependents,
     income,
-
-    breakdown: {
-      presumptiveTaxableIncome,
-      selfEmploymentTax,
-    },
-
-    auditRisk: {
-      level: "LOW",
-      score: 20,
-      reasons: [
-        "Presumptive taxation",
-        "Single income source",
-        "Standard IRS structure",
-      ],
-    },
-
-    strategy: presumptiveRule,
-
+    strategies,
+    recommended: balancedStrategy.name,
+    auditRisk,
     disclaimer:
-      "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional.",
+      "This analysis is based on publicly available IRS laws. Final filing should be reviewed by a licensed tax professional."
   };
-}
-
-module.exports = taxPredator;
+};
