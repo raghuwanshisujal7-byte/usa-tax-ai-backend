@@ -1,5 +1,1 @@
-const getIRSAnswer = require("./router");
-
-module.exports = {
-  getIRSAnswer
-};
+module.exports = require("./usaRules");
