@@ -1,33 +1,73 @@
-function calculateAuditRisk(strategyName, income) {
-  let score = 20; // base risk
+// src/ai/riskEngine.js
 
-  if (strategyName.includes("44ADA")) {
-    score += 30;
-  }
+function calculateAuditRisk({ income, type, filingStatus, dependents, strategies }) {
+  let score = 0;
+  const flags = [];
+  const whySafe = [];
 
-  if (strategyName.includes("Self Employment")) {
-    score += 25;
-  }
-
+  // Base income risk
   if (income > 100000) {
+    score += 20;
+    flags.push("High income bracket");
+  } else {
+    whySafe.push("Moderate income level");
+  }
+
+  // Freelancer / Schedule C risk
+  if (type === "freelancer") {
     score += 15;
+    flags.push("Self-employed (Schedule C filer)");
   }
 
-  if (income > 250000) {
-    score += 25;
+  // Filing status
+  if (filingStatus === "SINGLE") {
+    score += 5;
+    whySafe.push("Simple filing status");
   }
 
-  if (score > 100) score = 100;
+  // Dependents
+  if (dependents === 0) {
+    whySafe.push("No dependent-related credits claimed");
+  } else {
+    score += 10;
+    flags.push("Dependent-related credits increase scrutiny");
+  }
+
+  // Strategy-based adjustments
+  strategies.forEach((s) => {
+    if (s.strategy.includes("44ADA")) {
+      score -= 15;
+      whySafe.push("Presumptive taxation reduces audit complexity");
+    }
+
+    if (s.strategy.toLowerCase().includes("standard deduction")) {
+      score -= 10;
+      whySafe.push("Standard deduction is low-risk and common");
+    }
+
+    if (s.strategy.toLowerCase().includes("business expense")) {
+      score += 10;
+      flags.push("Business expense claims may be reviewed");
+    }
+  });
+
+  // Normalize score
+  if (score < 5) score = 5;
+  if (score > 95) score = 95;
+
+  let level = "LOW";
+  if (score >= 35 && score <= 65) level = "MEDIUM";
+  if (score > 65) level = "HIGH";
 
   return {
     score,
-    level:
-      score < 40
-        ? "LOW"
-        : score < 70
-        ? "MEDIUM"
-        : "HIGH"
+    level,
+    flags,
+    whySafe,
+    source: "IRS Audit Statistics & Publications",
   };
 }
 
-module.exports = { calculateAuditRisk };
+module.exports = {
+  calculateAuditRisk,
+};
